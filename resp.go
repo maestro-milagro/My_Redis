@@ -101,3 +101,26 @@ func (r *Resp) readArray() (Value, error) {
 	}
 	return value, nil
 }
+
+func (r *Resp) Read() (Value, error) {
+	var value Value
+	_type, err := r.reader.ReadByte()
+	if err != nil {
+		return Value{}, err
+	}
+	switch string(_type) {
+	case ARRAY:
+		value, err = r.readArray()
+		if err != nil {
+			return Value{}, err
+		}
+	case BULK:
+		value, err = r.readBulk()
+		if err != nil {
+			return Value{}, err
+		}
+	default:
+		return Value{}, nil
+	}
+	return value, nil
+}
