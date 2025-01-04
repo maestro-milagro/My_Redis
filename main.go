@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -9,27 +10,31 @@ import (
 )
 
 func main() {
+	logger := slog.New(
+		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
+	)
 	l, err := net.Listen("tcp", ":6377")
 	if err != nil {
-		slog.Error(err.Error(), err)
+		logger.Error(err.Error(), err)
 		panic(err)
 	}
 	defer l.Close()
 	conn, err := l.Accept()
 	if err != nil {
-		slog.Error(err.Error(), err)
+		logger.Error(err.Error(), err)
 		panic(err)
 	}
 	defer conn.Close()
 	for {
-		buffer := make([]byte, 1024)
-		_, err = conn.Read(buffer)
+		resp := NewResp(conn)
+		value, err := resp.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			slog.Error("error reading from client: ", err)
+			logger.Error("error reading from client: ", err)
 			os.Exit(1)
 		}
+		fmt.Println(value)
 	}
 }

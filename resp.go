@@ -26,7 +26,7 @@ type Resp struct {
 	reader *bufio.Reader
 }
 
-func (r *Resp) New(reader io.Reader) *Resp {
+func NewResp(reader io.Reader) *Resp {
 	return &Resp{
 		reader: bufio.NewReader(reader),
 	}
