@@ -2,16 +2,17 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
 	"strconv"
 )
 
 const (
-	STRING  = "+"
-	INTEGER = ":"
-	BULK    = "$"
-	ERROR   = "-"
-	ARRAY   = "*"
+	STRING  = '+'
+	INTEGER = ':'
+	BULK    = '$'
+	ERROR   = '-'
+	ARRAY   = '*'
 )
 
 type Value struct {
@@ -108,7 +109,7 @@ func (r *Resp) Read() (Value, error) {
 	if err != nil {
 		return Value{}, err
 	}
-	switch string(_type) {
+	switch _type {
 	case ARRAY:
 		value, err = r.readArray()
 		if err != nil {
@@ -123,4 +124,106 @@ func (r *Resp) Read() (Value, error) {
 		return Value{}, nil
 	}
 	return value, nil
+}
+
+// TODO: move to separate package
+// Write RESP
+
+func (v Value) marshalString() []byte {
+	var result []byte
+	result = append(result, STRING)
+	result = append(result, v.str...)
+	result = append(result, '\r', '\n')
+
+	return result
+}
+
+func (v Value) marshalInteger() []byte {
+	var result []byte
+
+	result = append(result, INTEGER)
+	result = append(result, strconv.Itoa(v.num)...)
+	result = append(result, '\r', '\n')
+
+	return result
+}
+
+func (v Value) marshalBulk() []byte {
+	var result []byte
+
+	result = append(result, BULK)
+	result = append(result, strconv.Itoa(len(v.bulk))...)
+	result = append(result, '\r', '\n')
+	result = append(result, v.bulk...)
+	result = append(result, '\r', '\n')
+
+	return result
+}
+
+func (v Value) marshalArray() []byte {
+	var result []byte
+
+	result = append(result, ARRAY)
+	result = append(result, strconv.Itoa(len(v.array))...)
+	result = append(result, '\r', '\n')
+
+	for _, value := range v.array {
+		result = append(result, value.Marshal()...)
+	}
+
+	return result
+}
+
+func (v Value) marshalError() []byte {
+	var result []byte
+	result = append(result, ERROR)
+	result = append(result, v.str...)
+	result = append(result, '\r', '\n')
+
+	return result
+}
+
+func (v Value) marshalNull() []byte {
+	return []byte("$-1\r\n")
+}
+
+func (v Value) Marshal() []byte {
+	switch v.typ {
+	case "string":
+		return v.marshalString()
+	case "integer":
+		return v.marshalInteger()
+	case "bulk":
+		return v.marshalBulk()
+	case "array":
+		return v.marshalArray()
+	case "error":
+		return v.marshalError()
+	case "null":
+		return v.marshalNull()
+	default:
+		return nil
+	}
+}
+
+type Writer struct {
+	writer io.Writer
+}
+
+func NewWriter(writer io.Writer) *Writer {
+	return &Writer{writer: writer}
+}
+
+func (w *Writer) Write(value Value) error {
+	bytes, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.writer.Write(bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
