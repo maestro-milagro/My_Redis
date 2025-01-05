@@ -2,11 +2,11 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -35,9 +35,28 @@ func main() {
 			logger.Error("error reading from client: ", err)
 			os.Exit(1)
 		}
-		fmt.Println(value)
+		if value.typ != "array" {
+			logger.Error("Expected array, got ", value.typ)
+			continue
+		}
 
+		if len(value.array) == 0 {
+			logger.Error("Invalid request expected array > 0")
+			continue
+		}
 		writer := NewWriter(conn)
-		writer.Write(Value{str: "OK", typ: "string"})
+
+		command := strings.ToLower(value.array[0].bulk)
+		args := value.array[1:]
+
+		handler, ok := Handlers[command]
+		if !ok {
+			logger.Error("Invalid request expected command: ", command)
+			writer.Write(Value{typ: "string", str: ""})
+			continue
+		}
+
+		result := handler(args)
+		writer.Write(result)
 	}
 }
