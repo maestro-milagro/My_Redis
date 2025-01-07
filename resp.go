@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"io"
 	"strconv"
 )
@@ -32,6 +31,8 @@ func NewResp(reader io.Reader) *Resp {
 		reader: bufio.NewReader(reader),
 	}
 }
+
+// Read RESP
 
 func (r *Resp) readLine() (line []byte, n int, err error) {
 	for {
@@ -126,7 +127,6 @@ func (r *Resp) Read() (Value, error) {
 	return value, nil
 }
 
-// TODO: move to separate package
 // Write RESP
 
 func (v Value) marshalString() []byte {
@@ -215,12 +215,9 @@ func NewWriter(writer io.Writer) *Writer {
 }
 
 func (w *Writer) Write(value Value) error {
-	bytes, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
+	bytes := value.Marshal()
 
-	_, err = w.writer.Write(bytes)
+	_, err := w.writer.Write(bytes)
 	if err != nil {
 		return err
 	}
