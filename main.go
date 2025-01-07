@@ -25,6 +25,11 @@ func main() {
 		panic(err)
 	}
 	defer conn.Close()
+	aof, err := NewAof("database.aof")
+	if err != nil {
+		logger.Error(err.Error(), err)
+		panic(err)
+	}
 	for {
 		resp := NewResp(conn)
 		value, err := resp.Read()
@@ -48,7 +53,9 @@ func main() {
 
 		command := strings.ToLower(value.array[0].bulk)
 		args := value.array[1:]
-
+		if command == "SET" || command == "HSET" {
+			aof.Write(value)
+		}
 		handler, ok := Handlers[command]
 		if !ok {
 			logger.Error("Invalid request expected command: ", command)

@@ -6,11 +6,15 @@ var Handlers = map[string]func([]Value) Value{
 	"PING": ping,
 	"GET":  get,
 	"SET":  set,
+	"HSET": hSet,
+	"HGET": hGet,
 }
 
-var SetMap map[string]string
-
+var SetMap = make(map[string]string)
 var SetMutex sync.RWMutex
+
+var HSetMap = make(map[string]map[string]string)
+var HSetMutex sync.RWMutex
 
 func ping(args []Value) Value {
 	return Value{typ: "string", str: "PONG"}
@@ -43,8 +47,49 @@ func get(args []Value) Value {
 	SetMutex.RUnlock()
 
 	if !ok {
-		return Value{str: "null"}
+		return Value{typ: "null"}
 	}
 
 	return Value{typ: "bulk", bulk: value}
+}
+
+func hSet(args []Value) Value {
+	if len(args) != 3 {
+		return Value{typ: "error", str: "Invalid number of arguments"}
+	}
+	hash := args[0].bulk
+	key := args[1].bulk
+	value := args[2].bulk
+
+	HSetMutex.Lock()
+	if _, ok := HSetMap[hash]; !ok {
+		HSetMap[hash] = make(map[string]string)
+	}
+	HSetMap[hash][key] = value
+	HSetMutex.Unlock()
+
+	return Value{typ: "string", str: "OK"}
+}
+
+func hGet(args []Value) Value {
+	if len(args) != 2 {
+		return Value{typ: "error", str: "Invalid number of arguments"}
+	}
+	hash := args[0].bulk
+	key := args[1].bulk
+
+	HSetMutex.RLock()
+	value, ok := HSetMap[hash][key]
+	HSetMutex.RUnlock()
+
+	if !ok {
+		return Value{typ: "null"}
+	}
+
+	return Value{typ: "bulk", bulk: value}
+}
+
+// TODO
+func hGetAll(args []Value) Value {
+	return Value{typ: "error", str: "Invalid number of arguments"}
 }
