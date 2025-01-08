@@ -13,6 +13,7 @@ func main() {
 	logger := slog.New(
 		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
 	)
+	logger.Info("Listening on port :6377")
 	l, err := net.Listen("tcp", ":6377")
 	if err != nil {
 		logger.Error(err.Error(), err)
